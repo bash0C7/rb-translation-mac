@@ -1,5 +1,5 @@
 #include <ruby.h>
-#include "translation_mac.h"
+#include "TranslationMac-Swift.h"
 
 static VALUE rb_translation_mac_perform(VALUE self, VALUE input) {
     const char *c_input = StringValueCStr(input);
