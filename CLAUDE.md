@@ -90,7 +90,7 @@ Helper exit codes: `0` success, `2` model-not-installed, `3` unsupported languag
 - Apple Silicon (arm64-darwin) assumed
 - Swift 6.3+
 - Ruby 3.2+, bundler 4.x, rake-compiler 1.2+
-- During development, `Gemfile` references swift_gem via `gem "swift_gem", path: "../swift_gem"`
+- `Gemfile` references swift_gem via `gem "swift_gem", github: "bash0C7/swift_gem"` until it ships on rubygems.org
 - `Gemfile.lock` is library-style: not git-tracked
 
 ## Prohibitions

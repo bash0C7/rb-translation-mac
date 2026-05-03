@@ -5,8 +5,8 @@ source "https://rubygems.org"
 # Specify your gem's dependencies in rb-translation-mac.gemspec
 gemspec
 
-# Local sibling repo during development. Comment out once swift_gem is published.
-gem "swift_gem", path: "../swift_gem"
+# swift_gem is not yet on rubygems.org; pull from GitHub until published.
+gem "swift_gem", github: "bash0C7/swift_gem"
 
 gem "irb"
 gem "rake", "~> 13.0"
