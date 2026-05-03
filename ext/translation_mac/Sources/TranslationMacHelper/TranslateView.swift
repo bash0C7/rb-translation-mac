@@ -34,16 +34,19 @@ struct TranslateView: View {
         }
     }
 
+    private func currentStatus() async -> LanguageAvailability.Status {
+        let (from, to) = endpoints()
+        return await LanguageAvailability().status(
+            from: Locale.Language(identifier: from),
+            to:   Locale.Language(identifier: to)
+        )
+    }
+
     private func runTask(session: TranslationSession) async {
         do {
+            let status = await currentStatus()
             switch operation {
             case .translate(_, _, let text):
-                let availability = LanguageAvailability()
-                let (from, to) = endpoints()
-                let status = await availability.status(
-                    from: Locale.Language(identifier: from),
-                    to:   Locale.Language(identifier: to)
-                )
                 switch status {
                 case .unsupported: onComplete(3, nil, "unsupported language pair"); return
                 case .supported:   onComplete(2, nil, "model not installed"); return
@@ -53,12 +56,6 @@ struct TranslateView: View {
                 let response = try await session.translate(text)
                 onComplete(0, response.targetText, nil)
             case .prepare:
-                let availability = LanguageAvailability()
-                let (from, to) = endpoints()
-                let status = await availability.status(
-                    from: Locale.Language(identifier: from),
-                    to:   Locale.Language(identifier: to)
-                )
                 if status == .unsupported {
                     onComplete(3, nil, "unsupported language pair")
                     return
