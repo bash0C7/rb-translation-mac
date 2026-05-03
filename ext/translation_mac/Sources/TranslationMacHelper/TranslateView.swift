@@ -1,5 +1,8 @@
 import SwiftUI
 import Translation
+// Apple's SE-0367 cross-import overlay that exposes `.translationTask`. The
+// MacOSX26.2 SDK no longer auto-pulls it in via `import Translation` alone, so
+// the explicit import is required to compile. It is public API and safe to ship.
 import _Translation_SwiftUI
 
 @available(macOS 15.0, *)
