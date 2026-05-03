@@ -2,8 +2,7 @@
 
 require "swift_gem/mkmf"
 
-BUNDLE_ID  = "com.bash0c7.rb-translation-mac.helper"
-HELPER_BIN = ".build/release/TranslationMacHelper"
+BUNDLE_ID = "com.bash0c7.rb-translation-mac.helper"
 
 def detect_codesign_identity
   override = ENV["TRANSLATION_MAC_CODESIGN_IDENTITY"]
@@ -54,31 +53,47 @@ SwiftGem::Mkmf.create_swift_makefile(
 )
 
 # 2. Append helper build/codesign/install rules to the generated Makefile.
-source_dir   = __dir__
-gem_root     = File.expand_path("../..", source_dir)
-helper_dest  = File.join(gem_root, "lib", "translation_mac", "TranslationMacHelper")
-helper_dir   = File.dirname(helper_dest)
-identity     = detect_codesign_identity
+#    `helper_output` and `helper_dest` are real file targets (NOT .PHONY) so
+#    Make skips swift build + codesign + reinstall when sources are unchanged.
+#    Earlier .PHONY-based rules ran swift build on every `make all`, even when
+#    that was a no-op (~1s wasted per invocation; rake-compiler triggers it
+#    multiple times during `rake test`).
+source_dir    = __dir__
+gem_root      = File.expand_path("../..", source_dir)
+helper_dest   = File.join(gem_root, "lib", "translation_mac", "TranslationMacHelper")
+helper_dir    = File.dirname(helper_dest)
+helper_output = File.join(source_dir, ".build", "release", "TranslationMacHelper")
+helper_sources = [
+  File.join(source_dir, "Package.swift"),
+  File.join(source_dir, "Resources", "Info.plist"),
+  *Dir[File.join(source_dir, "Sources", "TranslationMacHelper", "*.swift")],
+]
+identity      = detect_codesign_identity
 
 File.open("Makefile", "a") do |f|
   f.puts <<~MAKEFILE
 
     # ---- helper subprocess (added by extconf.rb) ----
-    HELPER_BIN     = #{HELPER_BIN}
-    HELPER_DEST    = #{make_escape(helper_dest)}
-    HELPER_DEST_DIR= #{make_escape(helper_dir)}
-    HELPER_IDENTITY= #{make_escape(identity)}
+    HELPER_OUTPUT    = #{make_escape(helper_output)}
+    HELPER_DEST      = #{make_escape(helper_dest)}
+    HELPER_DEST_DIR  = #{make_escape(helper_dir)}
+    HELPER_IDENTITY  = #{make_escape(identity)}
     HELPER_BUNDLE_ID = #{BUNDLE_ID}
+    HELPER_SOURCES   = #{helper_sources.map { |p| make_escape(p) }.join(" ")}
 
-    .PHONY: helper helper_install
-
-    helper:
+    $(HELPER_OUTPUT): $(HELPER_SOURCES)
     \tswift build -c release --package-path #{make_escape(source_dir)} --product TranslationMacHelper
-    \tcodesign -s '$(HELPER_IDENTITY)' --force --identifier '$(HELPER_BUNDLE_ID)' --options runtime '#{make_escape(source_dir)}/$(HELPER_BIN)'
+    \tcodesign -s '$(HELPER_IDENTITY)' --force --identifier '$(HELPER_BUNDLE_ID)' --options runtime '$(HELPER_OUTPUT)'
 
-    helper_install: helper
+    $(HELPER_DEST): $(HELPER_OUTPUT)
     \t@mkdir -p '$(HELPER_DEST_DIR)'
-    \tinstall -m 755 '#{make_escape(source_dir)}/$(HELPER_BIN)' '$(HELPER_DEST)'
+    \tinstall -m 755 '$(HELPER_OUTPUT)' '$(HELPER_DEST)'
+
+    .PHONY: helper helper_install post_install
+
+    helper: $(HELPER_OUTPUT)
+
+    helper_install: $(HELPER_DEST)
 
     install: helper_install
 
