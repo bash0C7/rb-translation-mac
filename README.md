@@ -7,7 +7,7 @@ Ruby native binding for Apple's Translation framework (`LanguageAvailability` + 
 - macOS 15.0+ (Translation framework requirement)
 - Ruby 3.2+
 - Swift 6.3+
-- Bundler 2.x
+- Bundler 4.x
 - Apple Silicon (arm64-darwin) verified; Intel may work but is not tested
 
 ## Installation
@@ -38,7 +38,10 @@ TRANSLATION_MAC_PAIRS=en-US:fr-FR,fr-FR:en-US bundle exec rake translation_mac:p
 require "translation_mac"
 
 TranslationMac.supported_languages
-# => ["en-US", "ja-JP", "zh-Hans-CN", ...]
+# => ["en-Latn-GB", "ja-Jpan-JP", "zh-Hans-CN", ...]
+# Identifiers are returned in BCP-47 maximal form (Locale.Language#maximalIdentifier),
+# i.e. lang-script-region. status(from:, to:) accepts the short form ("en-US", "ja-JP")
+# as well, since macOS normalizes internally.
 
 TranslationMac.status(from: "en-US", to: "ja-JP")
 # => :installed | :supported | :unsupported
@@ -49,7 +52,7 @@ TranslationMac.status(from: "en-US", to: "ja-JP")
 ```ruby
 result = TranslationMac.translate("Hello", from: "en-US", to: "ja-JP")
 result.success    # => true
-result.text       # => "こんにちは"
+result.text       # => "こんにちは" (Apple may update models; exact output not guaranteed)
 
 result = TranslationMac.prepare(from: "en-US", to: "fr-FR")
 result.success    # => true
