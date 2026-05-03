@@ -14,7 +14,9 @@ status = TranslationMac.status(from: "en-US", to: "ja-JP")
 puts "Status en-US -> ja-JP: #{status}"
 
 if status == :installed
-  result = TranslationMac.translate("Hello, world!", from: "en-US", to: "ja-JP")
+  original = "Hello, world!"
+  puts "Original: #{original}"
+  result = TranslationMac.translate(original, from: "en-US", to: "ja-JP")
   if result.success
     puts "Translation: #{result.text}"
   else
