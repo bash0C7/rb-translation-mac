@@ -19,4 +19,5 @@ ext/**/mkmf.log
 ext/**/*-Swift.h
 lib/**/*.bundle
 lib/**/*.bundle.dSYM/
+lib/translation_mac/TranslationMacHelper
 /tmp/

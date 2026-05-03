@@ -28,11 +28,29 @@ def make_escape(string)
   string.gsub("$", "$$")
 end
 
-# 1. Let swift_gem build the lightweight tier (.bundle)
+# 1. Let swift_gem build the lightweight tier (.bundle).
+#    Scope -emit-clang-header-path to ONLY the TranslationMac library target
+#    via --product, otherwise SwiftPM also builds TranslationMacHelper and the
+#    same -Xswiftc flag applies to both targets — whichever finishes last
+#    overwrites TranslationMac-Swift.h, breaking the C bridge build on the
+#    next invocation. The helper is built separately by the appended Make
+#    rules below (which intentionally do NOT pass -emit-clang-header-path).
+lib_only_builder = lambda do |package, source_dir|
+  header_path = File.join(File.expand_path(source_dir), "#{package}-Swift.h")
+  ok = system(
+    "swift", "build", "-c", "release", "--package-path", source_dir,
+    "--product", package,
+    "-Xswiftc", "-emit-clang-header-path", "-Xswiftc", header_path
+  )
+  raise "swift build failed for package #{package.inspect}" unless ok
+  File.expand_path(".build/release", source_dir)
+end
+
 SwiftGem::Mkmf.create_swift_makefile(
   "translation_mac/translation_mac",
   package: "TranslationMac",
-  source_dir: __dir__
+  source_dir: __dir__,
+  builder: lib_only_builder
 )
 
 # 2. Append helper build/codesign/install rules to the generated Makefile.
