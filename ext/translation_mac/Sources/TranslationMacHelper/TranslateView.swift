@@ -50,6 +50,16 @@ struct TranslateView: View {
                 let response = try await session.translate(text)
                 onComplete(0, response.targetText, nil)
             case .prepare:
+                let availability = LanguageAvailability()
+                let (from, to) = endpoints()
+                let status = await availability.status(
+                    from: Locale.Language(identifier: from),
+                    to:   Locale.Language(identifier: to)
+                )
+                if status == .unsupported {
+                    onComplete(3, nil, "unsupported language pair")
+                    return
+                }
                 try await session.prepareTranslation()
                 onComplete(0, "installed", nil)
             }
