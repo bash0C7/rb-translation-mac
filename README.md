@@ -4,7 +4,7 @@ Ruby native binding for Apple's Translation framework (`LanguageAvailability` + 
 
 ## Requirements
 
-- macOS 15.0+ (Translation framework requirement)
+- macOS 15.0+ — Apple's docs say the Translation framework runs on 14.4+, but `TranslationSession` and `.translationTask` are marked `@available(macOS 15.0, *)` in the SDK, so 14.4 builds will not compile against this gem.
 - Ruby 3.2+
 - Swift 6.3+
 - Bundler 4.x
@@ -78,6 +78,7 @@ bundle install
 bundle exec rake test         # full test suite
 bundle exec rake compile      # native ext + helper build
 bundle exec rake console      # IRB with TranslationMac preloaded
+bundle exec ruby example.rb   # smoke-test script (supported_languages, status, translate)
 ```
 
 In `test/`, the integration tests for `translate` and `prepare` are gated by `CI_SKIP`. Set `CI_SKIP=1` in CI to skip them.
