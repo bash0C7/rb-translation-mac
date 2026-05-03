@@ -13,6 +13,7 @@ class PrepareIntegrationTest < Test::Unit::TestCase
     result = TranslationMac.prepare(from: "en-US", to: "ja-JP")
     assert_kind_of(TranslationMac::PrepareResult, result)
     assert_equal(true, result.success, "error: #{result.error&.message}")
+    assert_equal(:installed, result.status)
   end
 
   test "prepare for unsupported pair returns UnsupportedLanguagePairError" do
