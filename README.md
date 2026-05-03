@@ -4,12 +4,6 @@ TODO: Describe rb-translation-mac.
 
 Built on top of [swift_gem](https://github.com/bash0C7/swift_gem). macOS / Apple Silicon only.
 
-## Requirements
-
-- macOS 12+, Apple Silicon
-- Swift 6.3+ (SE-0495 `@c` attribute). Install via [swiftly](https://www.swift.org/install/macos/) — Xcode not required.
-- Ruby 3.2+, Bundler 4.x
-
 ## Usage
 
 ```ruby
