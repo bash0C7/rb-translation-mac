@@ -159,7 +159,7 @@ git add ext/translation_mac/Package.swift \
          ext/translation_mac/Resources/Info.plist \
          rb-translation-mac.gemspec
 git rm -r examples 2>/dev/null || true
-git commit -m "chore: configure SwiftPM for two-target (lib + helper) layout on macOS 14"
+git commit -m "chore: configure SwiftPM for two-target (lib + helper) layout on macOS 15"
 ```
 
 ---
