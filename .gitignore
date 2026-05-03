@@ -19,5 +19,7 @@ ext/**/mkmf.log
 ext/**/*-Swift.h
 lib/**/*.bundle
 lib/**/*.bundle.dSYM/
-lib/translation_mac/TranslationMacHelper
+# Helper subprocess binaries installed by extconf.rb's helper_install rule.
+# Generic *Helper pattern guards against new helpers being accidentally tracked.
+lib/**/*Helper
 /tmp/
