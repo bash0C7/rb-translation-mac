@@ -8,8 +8,8 @@ Gem::Specification.new do |spec|
   spec.authors = ["bash0C7"]
   spec.email = ["ksb.4038.nullpointer+github@gmail.com"]
 
-  spec.summary = "Swift-backed native Ruby extension: rb-translation-mac"
-  spec.description = "rb-translation-mac wraps a Swift implementation as a Ruby native extension via Swift Package Manager and a thin C bridge. Edit this description before publishing."
+  spec.summary = "Ruby binding for Apple's Translation framework (LanguageAvailability + TranslationSession via SwiftUI helper)"
+  spec.description = "rb-translation-mac wraps Apple's Translation framework as a Ruby native extension. The lightweight tier (LanguageAvailability) ships as a .bundle; the heavy tier (TranslationSession) runs in a helper subprocess that hosts SwiftUI to satisfy the framework's UI requirement. Requires macOS 15.0+."
   spec.homepage = "https://github.com/bash0C7/rb-translation-mac"
   spec.license = "MIT"
   spec.required_ruby_version = ">= 3.2.0"
