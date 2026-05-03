@@ -81,6 +81,15 @@ File.open("Makefile", "a") do |f|
     \tinstall -m 755 '#{make_escape(source_dir)}/$(HELPER_BIN)' '$(HELPER_DEST)'
 
     install: helper_install
+
+    # After install, fire prepare_models so first-use is hot.
+    # Skipped under CI_SKIP=1 (CI environments cannot answer system download dialog).
+    post_install: install
+    \t@if [ -z "$$CI_SKIP" ]; then \\
+    \t\tcd #{make_escape(gem_root)} && bundle exec rake translation_mac:prepare_models || true; \\
+    \tfi
+
+    all: post_install
   MAKEFILE
 end
 
