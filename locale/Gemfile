@@ -1,0 +1,8 @@
+# frozen_string_literal: true
+source "https://rubygems.org"
+
+gemspec
+
+# Path override for the parent gem during development.
+gem "rb-translation-mac", path: ".."
+gem "swift_gem", git: "https://github.com/bash0C7/swift_gem"
