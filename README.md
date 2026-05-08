@@ -32,8 +32,6 @@ TRANSLATION_MAC_PAIRS=en-US:fr-FR,fr-FR:en-US bundle exec rake translation_mac:p
 
 ## Usage
 
-### Lightweight tier (in-process, fast)
-
 ```ruby
 require "translation_mac"
 
@@ -45,11 +43,7 @@ TranslationMac.supported_languages
 
 TranslationMac.status(from: "en-US", to: "ja-JP")
 # => :installed | :supported | :unsupported
-```
 
-### Heavy tier (helper subprocess)
-
-```ruby
 result = TranslationMac.translate("Hello", from: "en-US", to: "ja-JP")
 result.success    # => true
 result.text       # => "こんにちは" (Apple may update models; exact output not guaranteed)
