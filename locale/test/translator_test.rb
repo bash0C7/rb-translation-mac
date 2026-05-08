@@ -140,4 +140,11 @@ class TestTranslator < Test::Unit::TestCase
   def test_detect_target_lang_priority_handles_no_args
     assert_nil Translator.detect_target_lang_priority
   end
+
+  def test_detect_target_lang_priority_skips_middle_unresolvable_to_third
+    assert_equal "ja-JP",
+      Translator.detect_target_lang_priority("C", "POSIX", "ja_JP.UTF-8")
+    assert_equal "fr-FR",
+      Translator.detect_target_lang_priority(nil, "en_US.UTF-8", "fr-FR")
+  end
 end
