@@ -43,6 +43,22 @@ module TranslationMac
       PrepareResult.new(status: :unknown, success: false, error: HelperSpawnError.new(e.message))
     end
 
+    def status(from:, to:)
+      stdout, _stderr, status = run("status", from, to)
+      if status.exitstatus&.zero?
+        case stdout.strip
+        when "installed"   then :installed
+        when "supported"   then :supported
+        when "unsupported" then :unsupported
+        else :unsupported
+        end
+      else
+        :unsupported
+      end
+    rescue Errno::ENOENT, Errno::EACCES
+      :unsupported
+    end
+
     private
 
     def run(*args)
