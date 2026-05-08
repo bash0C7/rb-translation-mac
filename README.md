@@ -63,14 +63,14 @@ Both `translate` and `prepare` return Result objects (`TranslationMac::Translati
 
 ## Why a helper subprocess?
 
-Apple's `TranslationSession` is delivered exclusively through the SwiftUI `.translationTask` modifier — it cannot be instantiated directly. To call it from Ruby (or any non-SwiftUI context), `rb-translation-mac` ships a small helper binary that hosts a SwiftUI view inside `NSApplication.shared` and forwards results over stdout. `LanguageAvailability` is SwiftUI-independent and ships as a normal Ruby C extension (`.bundle`).
+Apple's `TranslationSession` is delivered exclusively through the SwiftUI `.translationTask` modifier — it cannot be instantiated directly. To call it from Ruby (or any non-SwiftUI context), `rb-translation-mac` ships a small helper binary that hosts a SwiftUI view inside `NSApplication.shared` and forwards results over stdout. `LanguageAvailability` (status / supported_languages) also runs inside the same helper subprocess: although the framework is SwiftUI-independent, its async APIs require an active main run loop to schedule continuations, which `NSApplication.shared.run()` provides.
 
 ## Development
 
 ```sh
 bundle install
 bundle exec rake test         # full test suite
-bundle exec rake compile      # native ext + helper build
+bundle exec rake helper_build  # build + install the helper binary
 bundle exec rake console      # IRB with TranslationMac preloaded
 bundle exec ruby example.rb   # smoke-test script (supported_languages, status, translate)
 ```
@@ -88,7 +88,6 @@ CI_SKIP=1 bundle exec rake test
 
 ## Related projects
 
-- [bash0C7/swift_gem](https://github.com/bash0C7/swift_gem) — scaffolding gem for Swift-extension Ruby gems
 - [bash0C7/rb-vision-ocrmac](https://github.com/bash0C7/rb-vision-ocrmac) — Vision (OCR) sibling
 - [bash0C7/rb-vision-mac](https://github.com/bash0C7/rb-vision-mac) — Vision (faces, etc.) sibling
 - [bash0C7/rb-natural-language-mac](https://github.com/bash0C7/rb-natural-language-mac) — NaturalLanguage sibling

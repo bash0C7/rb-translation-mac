@@ -11,7 +11,7 @@ class HelperSubprocessIntegrationTest < Test::Unit::TestCase
   def setup
     omit("CI_SKIP set") if ENV["CI_SKIP"]
     @helper = TranslationMac::DEFAULT_HELPER_PATH
-    omit("helper binary missing — run `bundle exec rake compile`") unless File.executable?(@helper)
+    omit("helper binary missing — run `bundle exec rake helper_build`") unless File.executable?(@helper)
   end
 
   test "status subcommand returns one of installed / supported / unsupported on exit 0" do
