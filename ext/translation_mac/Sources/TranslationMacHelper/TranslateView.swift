@@ -31,6 +31,7 @@ struct TranslateView: View {
         switch operation {
         case .translate(let from, let to, _): return (from, to)
         case .prepare(let from, let to):       return (from, to)
+        default: return ("", "")
         }
     }
 
@@ -62,6 +63,8 @@ struct TranslateView: View {
                 }
                 try await session.prepareTranslation()
                 onComplete(0, "installed", nil)
+            default:
+                onComplete(5, nil, "unexpected operation in UI task path")
             }
         } catch {
             onComplete(5, nil, "\(error)")
