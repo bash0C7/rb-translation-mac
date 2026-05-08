@@ -135,4 +135,26 @@ class HelperClientTest < Test::Unit::TestCase
     client = TranslationMac::HelperClient.new("/nonexistent/__missing_xyz")
     assert_equal(:unsupported, client.status(from: "en-US", to: "ja-JP"))
   end
+
+  # ----- supported_languages -----
+
+  test "supported_languages exit 0 with newline-separated tags -> Array" do
+    client = build_client(exit_code: 0, stdout: "en-US\nja-JP\nfr-FR")
+    assert_equal(["en-US", "ja-JP", "fr-FR"], client.supported_languages)
+  end
+
+  test "supported_languages exit 0 empty stdout -> []" do
+    client = build_client(exit_code: 0, stdout: "")
+    assert_equal([], client.supported_languages)
+  end
+
+  test "supported_languages helper crash exit 5 -> [] (silent degrade)" do
+    client = build_client(exit_code: 5, stderr: "boom")
+    assert_equal([], client.supported_languages)
+  end
+
+  test "supported_languages missing helper binary -> [] (silent degrade)" do
+    client = TranslationMac::HelperClient.new("/nonexistent/__missing_xyz")
+    assert_equal([], client.supported_languages)
+  end
 end
