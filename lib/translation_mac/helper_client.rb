@@ -59,6 +59,15 @@ module TranslationMac
       :unsupported
     end
 
+    def supported_languages
+      stdout, _stderr, status = run("languages")
+      return [] unless status.exitstatus&.zero?
+      return [] if stdout.strip.empty?
+      stdout.split("\n").map(&:strip).reject(&:empty?)
+    rescue Errno::ENOENT, Errno::EACCES
+      []
+    end
+
     private
 
     def run(*args)
