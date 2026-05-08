@@ -8,6 +8,7 @@ Logical sub-gem inside the rb-translation-mac repo (`locale/` directory). Path-l
 
 - **POSIX `LANG` → BCP-47 normalization** — `ja_JP.UTF-8` → `ja-JP`, `fr_FR` → `fr-FR`, `ja` → `ja`.
 - **Skip-or-translate decision** — `nil`, `""`, `C`, `POSIX`, and any English locale (`en`, `en-US`, `en_GB`) return `nil` from `detect_target_lang`, so callers branch on truthiness.
+- **Multi-source priority resolution** — `detect_target_lang_priority(*env_values)` walks a priority list and returns the first value that resolves to a non-nil BCP-47 tag, so consumers can layer their own primary env var (`MYTOOL_LANG`, `APPLE_SDK_DOC_LANG`, ...) on top of POSIX `LANG` without re-implementing the short-circuit logic.
 - **Per-input result cache** — Mutex-guarded, scoped to a single `Translator` instance.
 - **Result-struct unwrapping** — accepts either a plain `String` or the `Result` struct (`#success`, `#text`) returned by `TranslationMac.translate`.
 - **Silent degrade** — any provider failure (raised exception, `success: false`, blank text) falls back to the input unchanged. UI hover / popup contexts never crash on a flaky model.
@@ -27,6 +28,18 @@ t.translate("Adds the value to the array.")
 t.active?
 # => true when target_lang is set, false otherwise
 ```
+
+When you want a dedicated primary env var with `LANG` as fallback (avoiding `LANG`-override side effects on the rest of the process), use `detect_target_lang_priority`:
+
+```ruby
+target = TranslationMac::Locale::Translator.detect_target_lang_priority(
+  ENV["MYTOOL_LANG"], ENV["LANG"]
+)
+# => "ja-JP" when MYTOOL_LANG=ja-JP, falls through to LANG when MYTOOL_LANG
+#    is unset / blank / C / POSIX / en*
+```
+
+The first argument that resolves to a non-nil BCP-47 tag through `detect_target_lang` wins. Pass values in priority order; the call accepts any number of arguments.
 
 When you want to swap the underlying provider (testing, alternative engines):
 
