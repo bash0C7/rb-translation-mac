@@ -103,4 +103,36 @@ class HelperClientTest < Test::Unit::TestCase
     result = client.prepare(from: "en-US", to: "ja-JP")
     assert_kind_of(TranslationMac::HelperCrashError, result.error)
   end
+
+  # ----- status -----
+
+  test "status exit 0 stdout=installed -> :installed" do
+    client = build_client(exit_code: 0, stdout: "installed")
+    assert_equal(:installed, client.status(from: "en-US", to: "ja-JP"))
+  end
+
+  test "status exit 0 stdout=supported -> :supported" do
+    client = build_client(exit_code: 0, stdout: "supported")
+    assert_equal(:supported, client.status(from: "en-US", to: "ja-JP"))
+  end
+
+  test "status exit 0 stdout=unsupported -> :unsupported" do
+    client = build_client(exit_code: 0, stdout: "unsupported")
+    assert_equal(:unsupported, client.status(from: "xx-XX", to: "yy-YY"))
+  end
+
+  test "status exit 0 unknown stdout -> :unsupported (silent degrade)" do
+    client = build_client(exit_code: 0, stdout: "wat")
+    assert_equal(:unsupported, client.status(from: "en-US", to: "ja-JP"))
+  end
+
+  test "status helper crash exit 5 -> :unsupported (silent degrade)" do
+    client = build_client(exit_code: 5, stderr: "boom")
+    assert_equal(:unsupported, client.status(from: "en-US", to: "ja-JP"))
+  end
+
+  test "status missing helper binary -> :unsupported (silent degrade)" do
+    client = TranslationMac::HelperClient.new("/nonexistent/__missing_xyz")
+    assert_equal(:unsupported, client.status(from: "en-US", to: "ja-JP"))
+  end
 end
