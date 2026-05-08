@@ -3,7 +3,6 @@
 require_relative "translation_mac/version"
 require_relative "translation_mac/errors"
 require_relative "translation_mac/result"
-require_relative "translation_mac/translation_mac"
 require_relative "translation_mac/helper_client"
 
 module TranslationMac
@@ -22,6 +21,14 @@ module TranslationMac
 
     def prepare(from:, to:)
       HelperClient.new(helper_path).prepare(from: from, to: to)
+    end
+
+    def status(from:, to:)
+      HelperClient.new(helper_path).status(from: from, to: to)
+    end
+
+    def supported_languages
+      HelperClient.new(helper_path).supported_languages
     end
   end
 end
