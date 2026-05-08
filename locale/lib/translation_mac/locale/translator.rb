@@ -29,6 +29,19 @@ module TranslationMac
         bcp47
       end
 
+      # Resolve target lang from a priority list of env values. The first
+      # value that maps to a non-nil BCP-47 tag (i.e. is not nil / blank /
+      # English / C / POSIX) wins. Designed for callers that want to
+      # layer their own env var (`APPLE_SDK_DOC_LANG`, `MYTOOL_LANG`, ...)
+      # on top of POSIX `LANG`. Pass values in priority order.
+      def self.detect_target_lang_priority(*env_values)
+        env_values.each do |v|
+          target = detect_target_lang(v)
+          return target if target
+        end
+        nil
+      end
+
       # Default translate_proc adapter for the parent gem's API. Useful
       # when the caller has no special needs and just wants
       # `Translator.new(target_lang: ...)` to work.
