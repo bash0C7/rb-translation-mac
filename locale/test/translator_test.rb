@@ -113,4 +113,31 @@ class TestTranslator < Test::Unit::TestCase
     assert p.respond_to?(:call)
     assert_equal 1, p.parameters.count { |k, _| k == :req }   # text
   end
+
+  # ---- detect_target_lang_priority (multi-source resolution) -------------
+
+  def test_detect_target_lang_priority_picks_first_resolvable
+    assert_equal "ja-JP",
+      Translator.detect_target_lang_priority("ja-JP", "fr_FR")
+  end
+
+  def test_detect_target_lang_priority_falls_through_when_primary_unresolvable
+    assert_equal "fr-FR",
+      Translator.detect_target_lang_priority(nil, "fr_FR.UTF-8")
+    assert_equal "fr-FR",
+      Translator.detect_target_lang_priority("", "fr_FR")
+    assert_equal "fr-FR",
+      Translator.detect_target_lang_priority("C", "fr_FR")
+    assert_equal "fr-FR",
+      Translator.detect_target_lang_priority("en_US.UTF-8", "fr_FR")
+  end
+
+  def test_detect_target_lang_priority_returns_nil_when_all_unresolvable
+    assert_nil Translator.detect_target_lang_priority(nil, "C", "")
+    assert_nil Translator.detect_target_lang_priority("en", "POSIX")
+  end
+
+  def test_detect_target_lang_priority_handles_no_args
+    assert_nil Translator.detect_target_lang_priority
+  end
 end
