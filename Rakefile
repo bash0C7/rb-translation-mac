@@ -2,10 +2,28 @@
 
 require "bundler/gem_tasks"
 require "rake/testtask"
-require "rake/extensiontask"
+require "fileutils"
 
-Rake::ExtensionTask.new("translation_mac") do |ext|
-  ext.lib_dir = "lib/translation_mac"
+HELPER_DIR     = File.expand_path("ext/translation_mac", __dir__)
+HELPER_OUTPUT  = File.join(HELPER_DIR, ".build/release/TranslationMacHelper")
+HELPER_DEST    = File.expand_path("lib/translation_mac/TranslationMacHelper", __dir__)
+HELPER_BUNDLE_ID = "com.bash0c7.rb-translation-mac.helper"
+
+def detect_codesign_identity
+  override = ENV["TRANSLATION_MAC_CODESIGN_IDENTITY"]
+  return override if override && !override.empty?
+  output = `security find-identity -v -p codesigning 2>/dev/null`
+  candidates = output.scan(/"(Apple Development:[^"]+)"/).flatten
+  candidates.first || "-"
+end
+
+desc "Build and install the TranslationMacHelper subprocess binary"
+task :helper_build do
+  identity = detect_codesign_identity
+  sh "swift", "build", "-c", "release", "--package-path", HELPER_DIR, "--product", "TranslationMacHelper"
+  sh "codesign", "-s", identity, "--force", "--identifier", HELPER_BUNDLE_ID, "--options", "runtime", HELPER_OUTPUT
+  FileUtils.mkdir_p(File.dirname(HELPER_DEST))
+  FileUtils.install(HELPER_OUTPUT, HELPER_DEST, mode: 0755)
 end
 
 Rake::TestTask.new(:test) do |t|
@@ -15,7 +33,7 @@ Rake::TestTask.new(:test) do |t|
 end
 
 desc "Start an IRB console with translation_mac loaded"
-task console: :compile do
+task console: :helper_build do
   require "irb"
   $LOAD_PATH.unshift File.expand_path("lib", __dir__)
   require "translation_mac"
@@ -25,7 +43,7 @@ end
 
 namespace :translation_mac do
   desc "Pre-download language models (default: en-US <-> ja-JP). Override via TRANSLATION_MAC_PAIRS=en-US:fr-FR,fr-FR:en-US"
-  task prepare_models: :compile do
+  task prepare_models: :helper_build do
     if ENV["CI_SKIP"]
       puts "translation_mac:prepare_models — skipped (CI_SKIP set)"
       next
@@ -43,5 +61,5 @@ namespace :translation_mac do
   end
 end
 
-task test: :compile
+task test: :helper_build
 task default: :test

@@ -6,20 +6,12 @@ let package = Package(
     name: "TranslationMac",
     platforms: [.macOS(.v15)],
     products: [
-        .library(
-            name: "TranslationMac",
-            type: .dynamic,
-            targets: ["TranslationMac"]
-        ),
         .executable(
             name: "TranslationMacHelper",
             targets: ["TranslationMacHelper"]
         ),
     ],
     targets: [
-        .target(
-            name: "TranslationMac"
-        ),
         .executableTarget(
             name: "TranslationMacHelper",
             path: "Sources/TranslationMacHelper",
