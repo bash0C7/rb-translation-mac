@@ -8,11 +8,11 @@ Gem::Specification.new do |spec|
   spec.authors = ["bash0C7"]
   spec.email = ["ksb.4038.nullpointer+github@gmail.com"]
 
-  spec.summary = "Ruby binding for Apple's Translation framework (LanguageAvailability + TranslationSession via SwiftUI helper)"
-  spec.description = "rb-translation-mac wraps Apple's Translation framework via a SwiftUI helper subprocess. Both LanguageAvailability (status / supported_languages) and TranslationSession (translate / prepare) run inside TranslationMacHelper, which hosts NSApplication.shared.run() so async Apple framework calls resolve correctly under any Ruby host. Requires macOS 15.0+."
+  spec.summary = "Ruby binding for Apple's Translation framework (LanguageAvailability + TranslationSession via a helper subprocess)"
+  spec.description = "rb-translation-mac wraps Apple's Translation framework on macOS / Apple Silicon. LanguageAvailability (status / supported_languages) and TranslationSession (translate / prepare) run inside the TranslationMacHelper subprocess, whose NSApplication run loop services the framework's async work."
   spec.homepage = "https://github.com/bash0C7/rb-translation-mac"
   spec.license = "MIT"
-  spec.required_ruby_version = ">= 3.2.0"
+  spec.required_ruby_version = ">= 4.0"
 
   spec.metadata["homepage_uri"] = spec.homepage
   spec.metadata["source_code_uri"] = "https://github.com/bash0C7/rb-translation-mac"
@@ -24,7 +24,5 @@ Gem::Specification.new do |spec|
         f.start_with?(*%w[bin/ Gemfile .gitignore test/ .github/])
     end
   end
-  spec.bindir = "exe"
-  spec.executables = spec.files.grep(%r{\Aexe/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
 end

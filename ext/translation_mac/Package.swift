@@ -1,10 +1,10 @@
-// swift-tools-version: 6.3
+// swift-tools-version: 6.4
 
 import PackageDescription
 
 let package = Package(
     name: "TranslationMac",
-    platforms: [.macOS(.v15)],
+    platforms: [.macOS(.v27)],
     products: [
         .executable(
             name: "TranslationMacHelper",
@@ -14,8 +14,6 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "TranslationMacHelper",
-            path: "Sources/TranslationMacHelper",
-            swiftSettings: [.swiftLanguageMode(.v5)],
             linkerSettings: [
                 .unsafeFlags([
                     "-Xlinker", "-sectcreate",

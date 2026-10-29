@@ -3,20 +3,9 @@ require "translation_mac"
 
 module TranslationMac
   module Locale
-    # Wraps a translation provider (designed for
-    # `TranslationMac.translate(text, from:, to:)` Result API) with the
-    # LANG-aware conveniences every consumer ends up writing:
-    # - POSIX LANG → BCP-47 normalization (ja_JP.UTF-8 → ja-JP)
-    # - Skip English / C / POSIX / blank locales
-    # - Per-input result cache (Mutex-guarded)
-    # - Silent degrade to original text on any provider failure
-    #   so callers in popup / hover contexts never crash
     class Translator
       DEFAULT_SOURCE_LANG = "en-US"
 
-      # POSIX LANG (e.g. "ja_JP.UTF-8") → BCP-47 ("ja-JP"). Returns nil
-      # for English locales (no translation needed) and for C / POSIX /
-      # blank values, so callers can branch on truthiness alone.
       def self.detect_target_lang(env_lang)
         return nil if env_lang.nil?
         s = env_lang.to_s
@@ -29,11 +18,6 @@ module TranslationMac
         bcp47
       end
 
-      # Resolve target lang from a priority list of env values. The first
-      # value that maps to a non-nil BCP-47 tag (i.e. is not nil / blank /
-      # English / C / POSIX) wins. Designed for callers that want to
-      # layer their own env var (`APPLE_SDK_DOC_LANG`, `MYTOOL_LANG`, ...)
-      # on top of POSIX `LANG`. Pass values in priority order.
       def self.detect_target_lang_priority(*env_values)
         env_values.each do |v|
           target = detect_target_lang(v)
@@ -42,9 +26,6 @@ module TranslationMac
         nil
       end
 
-      # Default translate_proc adapter for the parent gem's API. Useful
-      # when the caller has no special needs and just wants
-      # `Translator.new(target_lang: ...)` to work.
       def self.default_translate_proc
         ->(text, from:, to:) { ::TranslationMac.translate(text, from: from, to: to) }
       end

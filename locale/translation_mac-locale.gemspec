@@ -22,13 +22,13 @@ Gem::Specification.new do |spec|
   DESC
   spec.homepage = "https://github.com/bash0C7/rb-translation-mac"
   spec.license = "MIT"
-  spec.required_ruby_version = ">= 3.2.0"
+  spec.required_ruby_version = ">= 4.0"
 
   spec.metadata["homepage_uri"] = spec.homepage
   spec.metadata["source_code_uri"] = "https://github.com/bash0C7/rb-translation-mac/tree/main/locale"
 
   spec.files = Dir.chdir(__dir__) do
-    Dir.glob(["lib/**/*.rb", "README.md"]).reject { |f| File.directory?(f) }
+    Dir.glob(["lib/**/*.rb", "sig/**/*.rbs", "README.md"]).reject { |f| File.directory?(f) }
   end
   spec.require_paths = ["lib"]
 

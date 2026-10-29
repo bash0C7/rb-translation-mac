@@ -2,13 +2,8 @@
 require "test_helper"
 require "translation_mac/locale"
 
-# Locale-aware Translator wraps rb-translation-mac with conveniences
-# every consumer ends up writing: LANG → BCP-47 normalization, skip
-# decision, per-input cache, silent degrade.
 class TestTranslator < Test::Unit::TestCase
   Translator = TranslationMac::Locale::Translator
-
-  # ---- detect_target_lang (LANG env → BCP-47) ----------------------------
 
   def test_detect_target_lang_strips_encoding_suffix
     assert_equal "ja-JP", Translator.detect_target_lang("ja_JP.UTF-8")
@@ -37,8 +32,6 @@ class TestTranslator < Test::Unit::TestCase
     assert_nil Translator.detect_target_lang(nil)
     assert_nil Translator.detect_target_lang("")
   end
-
-  # ---- translate (proc + cache + degrade) --------------------------------
 
   Result = Struct.new(:success, :text, keyword_init: true)
 
@@ -111,10 +104,8 @@ class TestTranslator < Test::Unit::TestCase
   def test_default_translate_proc_returns_callable
     p = Translator.default_translate_proc
     assert p.respond_to?(:call)
-    assert_equal 1, p.parameters.count { |k, _| k == :req }   # text
+    assert_equal 1, p.parameters.count { |k, _| k == :req }
   end
-
-  # ---- detect_target_lang_priority (multi-source resolution) -------------
 
   def test_detect_target_lang_priority_picks_first_resolvable
     assert_equal "ja-JP",

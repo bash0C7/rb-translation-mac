@@ -1,0 +1,92 @@
+module TranslationMac
+  # The gem version.
+  VERSION: String
+
+  # The path of the TranslationMacHelper binary that rake compile installs.
+  DEFAULT_HELPER_PATH: String
+
+  # Availability of a language pair as reported by LanguageAvailability.
+  type status = :installed | :supported | :unsupported
+
+  # Returns the helper binary path, DEFAULT_HELPER_PATH unless overridden.
+  def self.helper_path: () -> String
+
+  # Overrides the helper binary path.
+  def self.helper_path=: (String) -> String
+
+  # Translates +text+ from +from+ to +to+ with TranslationSession.
+  # Returns a failed result with ModelNotInstalledError instead of downloading models when the pair is not installed.
+  def self.translate: (String text, from: String, to: String) -> TranslationResult
+
+  # Asks the system to download the models for +from+ to +to+, presenting the system download prompt when they are not installed.
+  def self.prepare: (from: String, to: String) -> PrepareResult
+
+  # Returns the LanguageAvailability status for +from+ to +to+, or :unsupported when the helper fails.
+  def self.status: (from: String, to: String) -> status
+
+  # Returns the supported languages as maximal BCP-47 identifiers such as "ja-Jpan-JP", or an empty array when the helper fails.
+  def self.supported_languages: () -> Array[String]
+
+  # Base class for errors carried by TranslationResult and PrepareResult.
+  class Error < StandardError
+  end
+
+  # The language models for the pair are not downloaded.
+  class ModelNotInstalledError < Error
+  end
+
+  # Apple does not support the language pair.
+  class UnsupportedLanguagePairError < Error
+  end
+
+  # The helper exceeded its time limit.
+  class TimeoutError < Error
+  end
+
+  # The helper binary is missing or not executable.
+  class HelperSpawnError < Error
+  end
+
+  # The helper was killed by a signal or failed for another reason.
+  class HelperCrashError < Error
+  end
+
+  # The outcome of translate. +text+ is set on success and +error+ on failure.
+  class TranslationResult < Data
+    attr_reader text: String?
+    attr_reader success: bool
+    attr_reader error: Error?
+
+    def initialize: (text: String?, success: bool, error: Error?) -> void
+                  | (String? text, bool success, Error? error) -> void
+  end
+
+  # The outcome of prepare. +status+ is :installed on success and :unknown on failure.
+  class PrepareResult < Data
+    attr_reader status: status | :unknown
+    attr_reader success: bool
+    attr_reader error: Error?
+
+    def initialize: (status: status | :unknown, success: bool, error: Error?) -> void
+                  | (status | :unknown status, bool success, Error? error) -> void
+  end
+
+  # Runs the helper binary and maps its exit code and output to Ruby values.
+  class HelperClient
+    # Helper exit codes that map to specific errors; other non-zero codes map to HelperCrashError.
+    EXIT_CODE_ERRORS: Hash[Integer, singleton(Error)]
+
+    # Helper output of prepare mapped to status symbols.
+    PREPARE_STATUSES: Hash[String, status]
+
+    def initialize: (String helper_path) -> void
+
+    def translate: (String text, from: String, to: String) -> TranslationResult
+
+    def prepare: (from: String, to: String) -> PrepareResult
+
+    def status: (from: String, to: String) -> TranslationMac::status
+
+    def supported_languages: () -> Array[String]
+  end
+end

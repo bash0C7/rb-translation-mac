@@ -1,0 +1,35 @@
+module TranslationMac
+  module Locale
+    # Wraps a translation provider with LANG-aware conveniences: POSIX LANG to BCP-47 normalization, skipping English / C / POSIX / blank locales, a Mutex-guarded per-input cache, and silent degrade to the input text on any provider failure.
+    class Translator
+      # A provider called as +call(text, from:, to:)+. It returns a String, an object responding to +success+ and +text+ such as TranslationResult, or anything else to fall back to the input.
+      type provider = ^(String text, from: String, to: String) -> untyped
+
+      # The source language passed to the provider unless +source_lang:+ is given.
+      DEFAULT_SOURCE_LANG: String
+
+      # Converts a POSIX LANG value such as "ja_JP.UTF-8" to a BCP-47 tag such as "ja-JP".
+      # Returns nil for English locales and for nil, blank, C, and POSIX values, so callers can branch on truthiness.
+      def self.detect_target_lang: (String? env_lang) -> String?
+
+      # Returns the first of +env_values+ that detect_target_lang resolves to a tag, or nil when none does.
+      # Pass values in priority order, such as a tool-specific variable followed by LANG.
+      def self.detect_target_lang_priority: (*String? env_values) -> String?
+
+      # Returns a provider that calls TranslationMac.translate.
+      def self.default_translate_proc: () -> provider
+
+      # Returns true when +bcp47+ is "en" or starts with "en-", ignoring case.
+      def self.english?: (String? bcp47) -> bool
+
+      def initialize: (target_lang: String?, ?translate_proc: provider, ?source_lang: String) -> void
+
+      # Returns true when a target language is set.
+      def active?: () -> bool
+
+      # Translates +text+ into the target language, caching the result per input.
+      # Returns +text+ unchanged when it is nil or empty, when no target language is set, or when the provider raises or returns no text.
+      def translate: (String? text) -> String?
+    end
+  end
+end

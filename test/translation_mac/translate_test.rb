@@ -13,7 +13,7 @@ class TranslateIntegrationTest < Test::Unit::TestCase
     result = TranslationMac.translate("Hello", from: "en-US", to: "ja-JP")
     assert_kind_of(TranslationMac::TranslationResult, result)
     assert_equal(true, result.success, "error: #{result.error&.message}")
-    refute_nil(result.text)
     refute_empty(result.text.strip)
+    assert_equal(result.text.strip, result.text)
   end
 end
