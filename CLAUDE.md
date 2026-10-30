@@ -2,17 +2,16 @@
 
 ## Position
 
-Ruby binding for Apple's Translation framework. All 4 public APIs (`supported_languages`, `status`, `translate`, `prepare`) run inside a SwiftUI helper subprocess (`TranslationMacHelper`). Sibling to `rb-vision-ocrmac`, `rb-vision-mac`, `rb-natural-language-mac`, `rb-speech-mac`, `rb-sound-analysis-mac`.
+Ruby binding for Apple's Translation framework on macOS. The four public APIs (`supported_languages`, `status`, `translate`, `prepare`) run inside the `TranslationMacHelper` subprocess, a Swift Package Manager executable. Scaffolded from `bash0C7/swift_gem`. Sibling of `rb-vision-mac` and `rb-natural-language-mac`.
 
 ## Core design principles
 
-1. **Subprocess-only architecture.** All 4 APIs go through `TranslationMacHelper`. `LanguageAvailability` is SwiftUI-independent, but its async APIs require an active main run loop; `NSApplication.shared.run()` in the helper provides that. `TranslationSession` additionally requires a SwiftUI `.translationTask` modifier and cannot be instantiated directly.
-2. **Helper hosts SwiftUI in CLI.** `NSApplication.shared.setActivationPolicy(.accessory)` + `NSHostingView` in a borderless invisible window. `.translationTask` ticks inside the standard `NSApplication.run()` loop.
-3. **Result types over plain returns** for the heavy tier. `TranslationResult` and `PrepareResult` (`Data.define`) carry `:success` and `:error`; `:error` is one of `ModelNotInstalledError`, `UnsupportedLanguagePairError`, `TimeoutError`, `HelperSpawnError`, `HelperCrashError`. Lightweight tier returns plain `Array<String>` or `Symbol`.
-4. **30s helper timeout.** `DispatchQueue.main.asyncAfter` exits with code 4 if not finished.
-5. **Translate is sheet-free.** Before invoking `session.translate`, the helper checks `LanguageAvailability.status` and short-circuits to exit 2 if not `.installed`. `prepare` is the explicit "show download sheet" path.
-6. **Bundle-install pre-downloads the default pair.** `rake translation_mac:prepare_models` runs after `compile`. `CI_SKIP=1` opts out for CI.
-7. **macOS 15.0+.** Diverges from sibling gems' `.macOS(.v12)` baseline because Translation requires it. Apple docs say 14.4+ but the compiler reports `TranslationSession` and `.translationTask` as `@available(macOS 15.0, *)` (verified 2026-05-02).
+1. Helper subprocess, no C extension. `LanguageAvailability`'s async APIs need an active main run loop, which a Ruby process does not run; the helper runs `NSApplication.shared.run()` as an `.accessory` app. Ruby talks to it with `Open3.capture3`, so the gem itself is pure Ruby.
+2. `translate` uses `TranslationSession(installedSource:target:)`, which never downloads. The helper checks `LanguageAvailability.status` first and exits with 2 (not installed) or 3 (unsupported) before creating the session.
+3. `prepare` is the only download path. `prepareTranslation()` needs a session from SwiftUI's `.translationTask`, so the helper hosts `PrepareView` in an `NSHostingView` inside a borderless 1x1 window.
+4. Result types for the heavy tier. `TranslationResult` and `PrepareResult` (`Data.define`) carry `success` and `error`; `translate` and `prepare` never raise. The lightweight tier returns `Array<String>` or `Symbol` and degrades to `[]` / `:unsupported` when the helper fails.
+5. 30-second helper timeout. `DispatchQueue.main.asyncAfter` exits with 4; it applies to every subcommand, including `prepare` while the system download prompt is open.
+6. Scaffold parity where it applies. `xcrun swift`, `swift-tools-version: 6.4`, `.macOS(.v27)`, `task :swift`, `task compile: :swift`, `task :rbs`, `task test: %i[rbs compile]`, `sig/`, and the tracked `.bundle/config` follow swift_gem. The scaffold's C extension pieces (`extconf.rb`, `swift_mkmf.rb`, `<m>.c`, `@c` bridge, `Rake::ExtensionTask`, `rake-compiler`, `spec.extensions`) do not apply because nothing runs in the Ruby process.
 
 ## Architecture
 
@@ -20,78 +19,74 @@ Ruby binding for Apple's Translation framework. All 4 public APIs (`supported_la
 [caller (Ruby)]
   │
   ▼
-lib/translation_mac.rb            ← module entry, helper_path getter/setter
+lib/translation_mac.rb                  ← module entry, helper_path accessors, public API
   │
-  ├─ require_relative "translation_mac/result"
-  ├─ require_relative "translation_mac/errors"
-  └─ require_relative "translation_mac/helper_client"
-      └─ TranslationMac.supported_languages, .status, .translate, .prepare
-          → Open3.capture3 → lib/translation_mac/TranslationMacHelper
-                              └─ NSApplication.shared (.accessory)
-                                 └─ argv dispatch:
-                                    ├─ "languages" → LanguageAvailability async
-                                    ├─ "status"    → LanguageAvailability async
-                                    ├─ "translate" → NSHostingView(TranslateView)
-                                    │                └─ .translationTask { session in
-                                    │                      await session.translate(text) }
-                                    └─ "prepare"   → NSHostingView(TranslateView)
-                                                     └─ .translationTask(prepare:)
+  ▼
+lib/translation_mac/helper_client.rb    ← Open3.capture3, exit code → Result / Symbol / Array
+  │
+  ▼
+lib/translation_mac/TranslationMacHelper
+  └─ NSApplication.shared (.accessory) + 30 s timeout
+     ├─ languages → LanguageAvailability.supportedLanguages
+     ├─ status    → LanguageAvailability.status(from:to:)
+     ├─ translate → status check → TranslationSession(installedSource:target:).translate
+     └─ prepare   → status check → NSHostingView(PrepareView)
+                                    └─ .translationTask(source:target:) { prepareTranslation() }
 ```
+
+Helper exit codes: `0` success, `2` model not installed, `3` unsupported language pair, `4` timeout, `5` any other failure (including usage errors). Standard output carries the result without a trailing newline; standard error carries the failure message.
 
 ## Module boundaries
 
 | Layer | Responsibility |
 |---|---|
-| `lib/translation_mac.rb` | Require children, declare `module TranslationMac`, `DEFAULT_HELPER_PATH`, `helper_path` accessors, public `supported_languages` / `status` / `translate` / `prepare` |
-| `lib/translation_mac/errors.rb` | `Error` base + 5 subclasses |
-| `lib/translation_mac/result.rb` | `TranslationResult` / `PrepareResult` Data classes |
-| `lib/translation_mac/helper_client.rb` | `Open3.capture3` wrapper, exit code → error mapping, all 4 API methods |
-| `ext/.../TranslationMacHelper/main.swift` | argv parser, exit-code dispatch |
-| `ext/.../TranslationMacHelper/HelperApp.swift` | `NSApplication.shared` + `NSHostingView` + 30s timeout |
-| `ext/.../TranslationMacHelper/TranslateView.swift` | SwiftUI view with `.translationTask`. Imports `_Translation_SwiftUI` explicitly — Apple's SE-0367 cross-import overlay that is not pulled in automatically against the MacOSX26.2 SDK; it is public API and safe to ship |
-| `ext/.../Resources/Info.plist` | `CFBundleIdentifier` for stable codesign identity (no TCC strings — Translation framework is not TCC-gated) |
-| `Rakefile` | `:helper_build` task (`swift build -c release` → `codesign` → `FileUtils.install` to `lib/translation_mac/TranslationMacHelper`) + `translation_mac:prepare_models` task |
-
-Helper exit codes: `0` success, `2` model-not-installed, `3` unsupported language pair (also covers the unreachable-in-practice macOS-version-too-old guard), `4` helper timeout, `5` other helper crash. Exit 3 is intentionally overloaded because both conditions are terminal "this pair will never work" signals from the caller's perspective.
+| `lib/translation_mac.rb` | Requires the children, `DEFAULT_HELPER_PATH`, `helper_path` accessors, public `supported_languages` / `status` / `translate` / `prepare` |
+| `lib/translation_mac/errors.rb` | `Error` and its five subclasses |
+| `lib/translation_mac/result.rb` | `TranslationResult` / `PrepareResult` |
+| `lib/translation_mac/helper_client.rb` | Runs the helper, maps exit codes to errors and output to values |
+| `sig/translation_mac.rbs` | RBS and API documentation for everything above |
+| `ext/translation_mac/Sources/TranslationMacHelper/main.swift` | Parses arguments into `Operation` and starts `HelperApp` |
+| `ext/translation_mac/Sources/TranslationMacHelper/HelperApp.swift` | `Operation`, `ExitCode`, `finish`, and `HelperApp` (application loop, timeout, `LanguageAvailability`, `TranslationSession`) |
+| `ext/translation_mac/Sources/TranslationMacHelper/PrepareView.swift` | SwiftUI view whose `.translationTask` calls `prepareTranslation()` |
+| `ext/translation_mac/Resources/Info.plist` | Embedded into the helper's `__TEXT,__info_plist` by the linker for its bundle identifier and name |
+| `Rakefile` | `task :swift` (build, ad hoc `codesign`, install), `task compile: :swift`, `task :rbs`, `task test: %i[rbs compile]`, `task console: :compile`, `translation_mac:prepare_models` |
+| `locale/` | `translation_mac-locale` sub-gem with its own Gemfile, Rakefile, `sig/`, and tests |
 
 ## Build flow
 
-`bundle exec rake helper_build`:
+`bundle exec rake compile`:
 
-1. `swift build -c release --product TranslationMacHelper`
-2. `codesign --force --sign -` on the built binary
+1. `xcrun swift build -c release --package-path ext/translation_mac --product TranslationMacHelper` (output in `ext/translation_mac/.build/release`)
+2. `codesign -s - --force --identifier com.bash0c7.rb-translation-mac.helper --options runtime`
 3. `FileUtils.install` to `lib/translation_mac/TranslationMacHelper`
-4. Final state: `lib/translation_mac/TranslationMacHelper` (executable)
 
-`CI_SKIP=1 bundle exec rake helper_build` skips the post-install language model download.
+`bundle exec rake test` validates the RBS, compiles, and runs the tests.
 
 ## TDD discipline
 
-- t-wada style: RED → GREEN → REFACTOR independent commits (per global CLAUDE.md)
-- `test-unit`. `bundle exec rake test`
-- Lightweight tier tests always run.
-- `translate`/`prepare` integration tests gate on `ENV["CI_SKIP"]` AND `LanguageAvailability.status == :installed` for the test pair.
-- HelperClient unit tests use `test/fixtures/fake_helper.sh` driven by env vars (`FAKE_EXIT`, `FAKE_STDOUT`, `FAKE_STDERR`, `FAKE_SIGNAL`) — same pattern as rb-speech-mac.
+- t-wada style RED → GREEN → REFACTOR independent commits. test-unit. `bundle exec rake test`
+- `HelperClient` unit tests use `test/fixtures/fake_helper.sh`, driven by `FAKE_EXIT`, `FAKE_STDOUT`, `FAKE_STDERR`, and `FAKE_SIGNAL`
+- The remaining tests call the real helper. `CI_SKIP=1` omits the direct helper subprocess tests and the `translate` / `prepare` tests; the `translate` test and the installed-pair `prepare` test also omit themselves when `en-US` to `ja-JP` is not installed
+- `locale/` tests run separately: `cd locale && bundle exec rake test`
 
 ## Related projects
 
-- `~/dev/src/github.com/bash0C7/rb-speech-mac` — sibling helper-subprocess gem (TCC-gated; this gem inherited the helper structure but skipped TCC plumbing)
+- `~/dev/src/github.com/bash0C7/swift_gem` — scaffold origin
+- `~/dev/src/github.com/bash0C7/rb-natural-language-mac` — its `examples/sentiment_score.rb` uses this gem
+- `~/dev/src/github.com/bash0C7/rb-vision-mac` — sibling on the same scaffold
 
 ## Environment requirements
 
-- macOS 15.0+ (`Package.swift` declares `.macOS(.v15)`)
-- Apple Silicon (arm64-darwin) assumed
-- Swift 6.3+
-- Ruby 3.2+, bundler 4.x
-- `Gemfile.lock` is library-style: not git-tracked
+macOS 27+, Apple Silicon, Xcode 27 (Swift 6.4, builds run `xcrun swift`), Ruby 4.0+, bundler 4.x, rbs 4.x. `Gemfile.lock` is not git-tracked.
 
 ## Prohibitions
 
-- No Python source (per global CLAUDE.md)
+- No Python source
+- No code comments. Swift is documented with DocC (`///`, `- Parameter`, `- Returns`, ``` ``symbol`` ``` links); Ruby is documented with `#` comments above declarations in `sig/translation_mac.rbs` and `locale/sig/translation_mac_locale.rbs`. History goes in commit messages
 - Do not git-track `Gemfile.lock`
-- Do not promise determinism of translation results — Apple updates models
+- Do not promise deterministic translations; Apple updates the models
 - Do not log or persist translated text
-- Do not bypass `CI_SKIP` in CI environments — bundle install with prepare_models can hang on the macOS download dialog
-- Do not raise on translation failure; return Result with `:error` populated
+- Do not download models from `translate`; downloads go through `prepare`
+- Do not raise from `translate` or `prepare`; return a Result with `error` set
 - Commit messages in English, conventional commits style
 - `.claude/` is committed

@@ -1,8 +1,5 @@
 # frozen_string_literal: true
 
-# Example caller for rb-translation-mac.
-# Run: bundle exec ruby example.rb
-
 $LOAD_PATH.unshift File.expand_path("lib", __dir__)
 require "translation_mac"
 

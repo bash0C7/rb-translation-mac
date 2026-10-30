@@ -1,34 +1,25 @@
 # rb-translation-mac
 
-Ruby native binding for Apple's Translation framework (`LanguageAvailability` + `TranslationSession`).
+Ruby binding for Apple's Translation framework on macOS / Apple Silicon. Calls `LanguageAvailability` and `TranslationSession` from Ruby through the bundled `TranslationMacHelper` subprocess, a Swift Package Manager executable.
 
 ## Requirements
 
-- macOS 15.0+ — Apple's docs say the Translation framework runs on 14.4+, but `TranslationSession` and `.translationTask` are marked `@available(macOS 15.0, *)` in the SDK, so 14.4 builds will not compile against this gem.
-- Ruby 3.2+
-- Swift 6.3+
-- Bundler 4.x
-- Apple Silicon (arm64-darwin) verified; Intel may work but is not tested
+- macOS 27+, Apple Silicon
+- Xcode 27 (builds run `xcrun swift`)
+- Ruby 4.0+, Bundler 4.x
 
 ## Installation
 
-```ruby
-gem "rb-translation-mac"
-```
+Install from source:
 
-Then:
-
-```sh
+```bash
+git clone https://github.com/bash0C7/rb-translation-mac.git
+cd rb-translation-mac
 bundle install
+bundle exec rake compile
 ```
 
-`bundle install` builds the native extension and (unless `CI_SKIP=1`) pre-downloads the default language pair (`en-US` <-> `ja-JP`) via `rake translation_mac:prepare_models`. macOS may show a system download dialog the first time — accept it.
-
-To pre-download other language pairs:
-
-```sh
-TRANSLATION_MAC_PAIRS=en-US:fr-FR,fr-FR:en-US bundle exec rake translation_mac:prepare_models
-```
+`rake compile` builds `TranslationMacHelper` with `xcrun swift build -c release --package-path ext/translation_mac`, signs it ad hoc, and installs it to `lib/translation_mac/TranslationMacHelper`.
 
 ## Usage
 
@@ -36,63 +27,77 @@ TRANSLATION_MAC_PAIRS=en-US:fr-FR,fr-FR:en-US bundle exec rake translation_mac:p
 require "translation_mac"
 
 TranslationMac.supported_languages
-# => ["en-Latn-GB", "ja-Jpan-JP", "zh-Hans-CN", ...]
-# Identifiers are returned in BCP-47 maximal form (Locale.Language#maximalIdentifier),
-# i.e. lang-script-region. status(from:, to:) accepts the short form ("en-US", "ja-JP")
-# as well, since macOS normalizes internally.
+# => ["en-Latn-US", "ja-Jpan-JP", "fr-Latn-FR", ...]
 
 TranslationMac.status(from: "en-US", to: "ja-JP")
-# => :installed | :supported | :unsupported
+# => :installed
 
 result = TranslationMac.translate("Hello", from: "en-US", to: "ja-JP")
-result.success    # => true
-result.text       # => "こんにちは" (Apple may update models; exact output not guaranteed)
+result.success
+# => true
+result.text
+# => "こんにちは"
 
 result = TranslationMac.prepare(from: "en-US", to: "fr-FR")
-result.success    # => true
-result.status     # => :installed
+result.success
+# => true
+result.status
+# => :installed
 ```
 
-Both `translate` and `prepare` return Result objects (`TranslationMac::TranslationResult`, `TranslationMac::PrepareResult`). On failure, `result.error` is one of:
+`supported_languages` returns maximal BCP-47 identifiers (language-script-region) in no particular order. `status`, `translate`, and `prepare` also accept short identifiers such as `"en-US"` and `"ja"`.
 
-- `TranslationMac::ModelNotInstalledError` — language model not yet downloaded
-- `TranslationMac::UnsupportedLanguagePairError` — pair not supported by Apple
-- `TranslationMac::TimeoutError` — helper exceeded 30s
-- `TranslationMac::HelperSpawnError` — helper binary missing or not executable
-- `TranslationMac::HelperCrashError` — helper killed by signal or unknown failure
+`status` returns `:installed` (models downloaded), `:supported` (models not downloaded), or `:unsupported`. It returns `:unsupported`, and `supported_languages` returns `[]`, when the helper fails.
 
-## Why a helper subprocess?
+`translate` uses only installed models and never downloads. `prepare` asks macOS to download the models for a pair and presents the system download prompt when they are not installed. Translation output comes from Apple's models and can change with macOS updates.
 
-Apple's `TranslationSession` is delivered exclusively through the SwiftUI `.translationTask` modifier — it cannot be instantiated directly. To call it from Ruby (or any non-SwiftUI context), `rb-translation-mac` ships a small helper binary that hosts a SwiftUI view inside `NSApplication.shared` and forwards results over stdout. `LanguageAvailability` (status / supported_languages) also runs inside the same helper subprocess: although the framework is SwiftUI-independent, its async APIs require an active main run loop to schedule continuations, which `NSApplication.shared.run()` provides.
+`translate` returns a `TranslationMac::TranslationResult` and `prepare` returns a `TranslationMac::PrepareResult`. Neither raises; on failure `success` is `false` and `error` is one of:
+
+| Error | Cause |
+|---|---|
+| `TranslationMac::ModelNotInstalledError` | The models for the pair are not downloaded |
+| `TranslationMac::UnsupportedLanguagePairError` | Apple does not support the pair |
+| `TranslationMac::TimeoutError` | The helper did not finish within 30 seconds |
+| `TranslationMac::HelperSpawnError` | The helper binary is missing or not executable |
+| `TranslationMac::HelperCrashError` | The helper was killed by a signal or failed otherwise |
+
+`TranslationMac.helper_path=` points the gem at another helper binary.
+
+## Language models
+
+Download models for language pairs ahead of time:
+
+```bash
+bundle exec rake translation_mac:prepare_models
+TRANSLATION_MAC_PAIRS=en-US:fr-FR,fr-FR:en-US bundle exec rake translation_mac:prepare_models
+```
+
+The default pairs are `en-US:ja-JP,ja-JP:en-US`.
+
+## translation_mac-locale
+
+`locale/` holds the `translation_mac-locale` sub-gem: POSIX `LANG` to BCP-47 conversion, English and `C` locale skipping, a per-input cache, and fallback to the input text on failure. See [locale/README.md](locale/README.md).
 
 ## Development
 
-```sh
+```bash
 bundle install
-bundle exec rake test         # full test suite
-bundle exec rake helper_build  # build + install the helper binary
-bundle exec rake console      # IRB with TranslationMac preloaded
-bundle exec ruby example.rb   # smoke-test script (supported_languages, status, translate)
+bundle exec rake test
+bundle exec rake console
+bundle exec ruby example.rb
 ```
 
-In `test/`, the integration tests for `translate` and `prepare` are gated by `CI_SKIP`. Set `CI_SKIP=1` in CI to skip them.
+`rake test` validates `sig/translation_mac.rbs`, runs `rake compile`, then runs the tests. `HelperClient` tests use `test/fixtures/fake_helper.sh`; the other tests call the real helper. `CI_SKIP=1 bundle exec rake test` omits the tests that call the helper subcommands directly and the `translate` / `prepare` tests. The `translate` test and the installed-pair `prepare` test omit themselves when `en-US` to `ja-JP` is not installed.
 
-### Running tests in CI
+`example.rb` prints the supported languages and the `en-US` to `ja-JP` status, then translates a sentence when the pair is installed.
 
-`CI_SKIP=1 bundle exec rake test` skips the `translate`/`prepare` integration tests so CI does not hang on omitted language-model downloads. The lightweight-tier and HelperClient unit tests still run. Use the same flag with `bundle install` to suppress the post-install `prepare_models` download:
+The `locale/` sub-gem has its own Gemfile:
 
-```sh
-CI_SKIP=1 bundle install
-CI_SKIP=1 bundle exec rake test
+```bash
+cd locale
+bundle install
+bundle exec rake test
 ```
-
-## Related projects
-
-- [bash0C7/rb-vision-ocrmac](https://github.com/bash0C7/rb-vision-ocrmac) — Vision (OCR) sibling
-- [bash0C7/rb-vision-mac](https://github.com/bash0C7/rb-vision-mac) — Vision (faces, etc.) sibling
-- [bash0C7/rb-natural-language-mac](https://github.com/bash0C7/rb-natural-language-mac) — NaturalLanguage sibling
-- [bash0C7/rb-speech-mac](https://github.com/bash0C7/rb-speech-mac) — Speech sibling (also uses helper subprocess pattern)
-- [bash0C7/rb-sound-analysis-mac](https://github.com/bash0C7/rb-sound-analysis-mac) — SoundAnalysis sibling
 
 ## License
 

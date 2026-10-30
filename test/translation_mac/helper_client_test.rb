@@ -12,8 +12,6 @@ class HelperClientTest < Test::Unit::TestCase
     TranslationMac::HelperClient.new(path)
   end
 
-  # ----- translate -----
-
   test "translate exit 0 -> TranslationResult(success: true, text: stdout)" do
     client = build_client(exit_code: 0, stdout: "こんにちは")
     result = client.translate("Hello", from: "en-US", to: "ja-JP")
@@ -71,8 +69,6 @@ class HelperClientTest < Test::Unit::TestCase
     assert_equal(false, result.success)
   end
 
-  # ----- prepare -----
-
   test "prepare exit 0 stdout=installed -> PrepareResult(:installed, success: true)" do
     client = build_client(exit_code: 0, stdout: "installed")
     result = client.prepare(from: "en-US", to: "ja-JP")
@@ -104,8 +100,6 @@ class HelperClientTest < Test::Unit::TestCase
     assert_kind_of(TranslationMac::HelperCrashError, result.error)
   end
 
-  # ----- status -----
-
   test "status exit 0 stdout=installed -> :installed" do
     client = build_client(exit_code: 0, stdout: "installed")
     assert_equal(:installed, client.status(from: "en-US", to: "ja-JP"))
@@ -135,8 +129,6 @@ class HelperClientTest < Test::Unit::TestCase
     client = TranslationMac::HelperClient.new("/nonexistent/__missing_xyz")
     assert_equal(:unsupported, client.status(from: "en-US", to: "ja-JP"))
   end
-
-  # ----- supported_languages -----
 
   test "supported_languages exit 0 with newline-separated tags -> Array" do
     client = build_client(exit_code: 0, stdout: "en-US\nja-JP\nfr-FR")
