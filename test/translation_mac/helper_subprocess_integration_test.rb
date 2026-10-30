@@ -22,6 +22,13 @@ class HelperSubprocessIntegrationTest < Test::Unit::TestCase
     assert_equal("unsupported", stdout.strip)
   end
 
+  test "translate subcommand for unsupported pair exits 3 with empty stdout" do
+    stdout, stderr, status = Open3.capture3(@helper, "translate", "en-US", "en-GB", "Hello")
+    assert_equal(3, status.exitstatus)
+    assert_equal("", stdout)
+    assert_equal("unsupported language pair", stderr)
+  end
+
   test "languages subcommand returns newline-separated BCP-47 tags including en and ja" do
     stdout, _stderr, status = Open3.capture3(@helper, "languages")
     assert_equal(0, status.exitstatus)
