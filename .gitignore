@@ -12,3 +12,4 @@ Gemfile.lock
 ext/**/.build/
 lib/translation_mac/TranslationMacHelper
 /tmp/
+docs/superpowers/

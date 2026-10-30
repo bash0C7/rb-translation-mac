@@ -20,8 +20,3 @@ Major architectural simplification: all four `TranslationMac` APIs now route thr
 ### Added
 
 - `TranslationMac::Locale::Translator.detect_target_lang_priority(*env_values)` — multi-source priority resolution helper for consumers that want a primary env var (`MYTOOL_LANG`, `APPLE_SDK_DOC_LANG`, ...) layered on top of POSIX `LANG`. Lives in the `translation_mac-locale` sub-gem.
-
-### Reference
-
-- Migration design: `docs/superpowers/specs/2026-05-08-availability-helper-subprocess-migration-design.md`
-- Implementation plan: `docs/superpowers/plans/2026-05-08-availability-helper-subprocess-migration-plan.md`
