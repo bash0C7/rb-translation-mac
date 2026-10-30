@@ -29,10 +29,28 @@ class HelperClientTest < Test::Unit::TestCase
     assert_kind_of(TranslationMac::ModelNotInstalledError, result.error)
   end
 
+  test "translate exit 2 with helper stderr -> ModelNotInstalledError carrying stderr" do
+    client = build_client(exit_code: 2, stderr: "model not installed")
+    result = client.translate("Hello", from: "en-US", to: "ja-JP")
+    assert_equal(false, result.success)
+    assert_nil(result.text)
+    assert_kind_of(TranslationMac::ModelNotInstalledError, result.error)
+    assert_equal("model not installed", result.error.message)
+  end
+
   test "translate exit 3 -> UnsupportedLanguagePairError" do
     client = build_client(exit_code: 3)
     result = client.translate("Hello", from: "en-US", to: "xx-XX")
     assert_kind_of(TranslationMac::UnsupportedLanguagePairError, result.error)
+  end
+
+  test "translate exit 3 with helper stderr -> UnsupportedLanguagePairError carrying stderr" do
+    client = build_client(exit_code: 3, stderr: "unsupported language pair")
+    result = client.translate("Hello", from: "en-US", to: "en-GB")
+    assert_equal(false, result.success)
+    assert_nil(result.text)
+    assert_kind_of(TranslationMac::UnsupportedLanguagePairError, result.error)
+    assert_equal("unsupported language pair", result.error.message)
   end
 
   test "translate exit 4 -> TimeoutError" do
